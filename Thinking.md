@@ -42,3 +42,15 @@ Also coordinates system is a bit off with hex-grid? if previously it was like x 
  * https://www.redblobgames.com/grids/hexagons/
 
 Yet it feels that it can give some issues with rendering of rectangles it can give some new sense of visual style for arranging visual elements on hex based grid.
+
+I also thought about angled isometric rendering which gives sort of different look on things but it is still square-base grid and I just want to try something else for now.
+
+## Hex-grid with coordinates?
+
+Indeed it is a problem how to give unique coordinates to hex grid and not try to shove cartesian system where it does not help.
+
+One funky idea that I like right now is to look at these hexes as sort of pyramid of cubes and each hex is a cube with its x,y,z coordinates.
+
+So instead of trying to use x,y we can try to use q,s,r and keep in mind that they correspond to x,y,z of our imaginary cubes in 3d-space.
+
+Easier said than done so I need to prototype something with this idea.

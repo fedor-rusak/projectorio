@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<meta charset="utf-8">
+		<title>Projectorio! In HEX!</title>
+		<script>
+			/**
+			 *  Why?
+			 * 
+			 *  So I want to grab some pieces of factorio, add some ideas
+			 *  and probably have fun along the way.
+			 * 
+			 *  Here I play with hex grid approach.
+			 */
+			const data = [
+				{id: 1, type: 'generator', width: 3, height: 3, productionTicks: 0, x: 3, y: 3},
+				{id: 2, type: 'consumer', width: 3, height: 3, productionTicks: 3, requestMaterialType: 1, x: 9, y: 3},
+				{id: 3, type: 'transporter', direction: 'right', x: 6, y: 3},
+				{id: 4, type: 'transporter', direction: 'down', x: 7, y: 3},
+				{id: 5, type: 'transporter', direction: 'down', x: 7, y: 4},
+				{id: 6, type: 'transporter', direction: 'right', x: 7, y: 5},
+				{id: 7, type: 'transporter', direction: 'right', x: 8, y: 5},
+				{id: 8, type: 'multiswitch', combines: true, direction: 'right', inputTypes: [1,2,3], connector: {x: 1, y: 1}, x: 14, y: 4}
+			];
+
+			const renderLine = (ctx, x1,y1, x2, y2) => {
+				ctx.beginPath();
+				ctx.moveTo(x1, y1);
+				ctx.lineTo(x2, y2);
+				ctx.stroke();
+			}
+
+			window.onload = () => {
+				const canvas = document.querySelector('#canvas');
+				const ctx = canvas.getContext('2d');
+				const setBackground = (step, side, radius, backgroundColor, gridColor) => {
+					const WIDTH = canvas.width;
+					const HEIGHT = canvas.height;
+					ctx.fillStyle = backgroundColor;
+					ctx.fillRect(0, 0, WIDTH, HEIGHT);
+					ctx.strokeStyle = gridColor;
+					
+					for (let i = 0; i <= WIDTH/STEP/2; i++) {
+						
+
+						for (let j = 0; j <= HEIGHT/STEP/2; j++) {
+							let x = i * 2 * step + (j % 2)*step;
+							let y = j * (radius+side/2);
+
+							let points = [
+								x+step, y-side/2,
+								x+step, y+side/2,
+								x, y+radius,
+								x-step, y+side/2,
+								x-step, y-side/2,
+								x, y-radius
+							];
+							
+							for (let k = 0; k < points.length/2; k++) {
+								let x1 = points[k*2];
+								let y1 = points[k*2+1];
+								let x2 = points[k*2+2];
+								let y2 = points[k*2+3];
+								if (k === (points.length/2-1)) {
+									x2 = points[0];
+									y2 = points[1];
+								}
+
+								renderLine(ctx, x1, y1, x2, y2);
+							}
+						}
+					}
+				}
+
+				const RADIUS = 50;
+				const STEP = Math.round(RADIUS*Math.cos(Math.PI*30/180));
+				const SIDE = Math.round(Math.sqrt(RADIUS*RADIUS-STEP*STEP))*2;
+
+				const state = {
+					step: STEP,
+					side: SIDE,
+					radius: RADIUS,
+					backgroundColor: 'lightgrey',
+					gridColor: 'rgba(100,0,0,0.25)'
+				};
+
+
+				setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor);
+			}
+		</script>
+	</head>
+	<body>
+		<div style="display: flex; align-items: stretch; max-height: 451px;">
+			<canvas height="450px" width="1050px" id="canvas" style="border: solid;"></canvas>
+		</div>
+	</body>
+</html>
