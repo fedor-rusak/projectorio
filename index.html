@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<meta charset="utf-8">
+		<title>Projectorio! It's alive!</title>
+		<script>
+			/**
+			 *  Why?
+			 * 
+			 *  So I want to grab some pieces of factorio, add some ideas
+			 *  and probably have fun along the way.
+			 */
+			const data = [
+				{id: 1, type: 'generator', width: 3, height: 3, productionTicks: 0, x: 3, y: 3},
+				{id: 2, type: 'consumer', width: 3, height: 3, productionTicks: 3, requestMaterialType: 1, x: 9, y: 3},
+				{id: 3, type: 'transporter', direction: 'right', x: 6, y: 3},
+				{id: 4, type: 'transporter', direction: 'down', x: 7, y: 3},
+				{id: 5, type: 'transporter', direction: 'down', x: 7, y: 4},
+				{id: 6, type: 'transporter', direction: 'right', x: 7, y: 5},
+				{id: 7, type: 'transporter', direction: 'right', x: 8, y: 5},
+				{id: 8, type: 'multiswitch', combines: true, direction: 'right', inputTypes: [1,2,3], connector: {x: 1, y: 1}, x: 14, y: 4}
+			];
+
+			const renderLine = (ctx, x1,y1, x2, y2) => {
+				ctx.beginPath();
+				ctx.moveTo(x1, y1);
+				ctx.lineTo(x2, y2);
+				ctx.stroke();
+			}
+
+			window.onload = () => {
+				const canvas = document.querySelector('#canvas');
+				const ctx = canvas.getContext('2d');
+				const setBackground = (step, backgroundColor, gridColor) => {
+					const WIDTH = canvas.width;
+					const HEIGHT = canvas.height;
+					ctx.fillStyle = backgroundColor;
+					ctx.fillRect(0, 0, WIDTH, HEIGHT);
+					ctx.strokeStyle = gridColor;
+					
+					for (let i = 0; i <= WIDTH; i+=step) {
+						renderLine(ctx, i, 0, i, HEIGHT);
+					}
+					for (let i = 0; i <= HEIGHT; i+=step) {
+						renderLine(ctx, 0, i, WIDTH, i);
+					}
+				}
+
+				const STEP = 50;
+				const state = {
+					step: STEP,
+					backgroundColor: 'lightgrey',
+					gridColor: 'rgba(100,0,0,0.25)',
+					tick: 0,
+					storage: {},
+					generatorState: {},
+					map: {},
+					index: {}
+				};
+
+				for (let i = 0; i < data.length; i++) {
+					let item = data[i];
+					state.storage[item.id] = null;
+					if (data[i].type === 'generator' || data[i].type === 'consumer') {
+						state.generatorState[item.id] = item.productionTicks;
+					}
+					if ( item.width !== undefined || item.height !== undefined) {
+						for (let i = 0; i < item.width; i++) {
+							for (let j = 0; j < item.height; j++) {
+								let key = (item.x+i)+'_'+(item.y+j);
+								state.map[key] = item.id;
+							}
+						}
+					}
+					else {
+						state.map[item.x + '_' + item.y] = item.id;
+					}
+					state.index[item.id] = item;
+				}
+
+
+				const drawRect = (x, y, width, height) => {
+					ctx.fillRect(Math.round(x)*STEP+1, Math.round(y)*STEP+1, STEP*width-2, STEP*height-2);
+				}
+
+				const renderMaterial = (x, y,  type) => {
+					ctx.fillStyle = 'IndianRed';
+					ctx.fillRect(Math.round(x)*STEP+10, Math.round(y)*STEP+10, STEP-20, STEP-20);
+					ctx.font = '30px serif';
+					ctx.fillStyle = 'DarkGreen';
+					ctx.fillText(type, x*STEP+18, y*STEP+35);
+				}
+
+				const renderFromScratch = (root, state) => {
+					setBackground(state.step, state.backgroundColor, state.gridColor);
+
+					for (let i = 0; i < data.length; i++) {
+						const item = data[i];
+
+						if (item.type === 'generator') {
+							ctx.fillStyle = 'lightgreen';
+						}
+						else if (item.type === 'consumer') {
+							ctx.fillStyle = 'DarkKhaki';
+						}
+						else if (item.type === 'transporter') {
+							ctx.fillStyle = 'yellow';
+						}
+
+						if (item.type !== 'multiswitch') {
+							drawRect(item.x, item.y, item.width || 1, item.height || 1);
+						}
+						else {
+
+						}
+
+						if (item.type === 'transporter') {
+							ctx.strokeStyle = 'grey';
+							if (item.direction === 'right') {
+								ctx.beginPath();
+								ctx.moveTo((item.x+0.25)*STEP, item.y*STEP);
+								ctx.lineTo((item.x+0.75)*STEP, (item.y+0.5)*STEP);
+								ctx.lineTo((item.x+0.25)*STEP, (item.y+1)*STEP);
+								ctx.stroke();
+							}
+							else if (item.direction === 'down') {
+								ctx.beginPath();
+								ctx.moveTo(item.x*STEP, (item.y+0.25)*STEP);
+								ctx.lineTo((item.x+0.5)*STEP, (item.y+0.75)*STEP);
+								ctx.lineTo((item.x+1)*STEP, (item.y+0.25)*STEP);
+								ctx.stroke();
+							}
+						}
+
+						if (item.type === 'generator' || item.type === 'consumer') {
+							ctx.font = '60px serif';
+							ctx.fillStyle = 'grey';
+							const text = state.generatorState[item.id];
+  							ctx.fillText(text, (item.x+1)*STEP+10, (item.y+1)*STEP+45);
+  						}
+
+  						if (item.type === 'multiswitch') {
+
+  						}
+
+  						if (state.storage[item.id] !== null) {
+  							if (item.type === 'generator') {
+  								renderMaterial(item.x+2, item.y+1, state.storage[item.id].materialType);
+  							}
+  							else if (item.type === 'consumer') {
+  								renderMaterial(item.x, item.y+1, state.storage[item.id].materialType);
+  							}
+  							else if (item.type === 'transporter') {
+  								renderMaterial(item.x, item.y, state.storage[item.id].materialType);	
+  							}
+  						}
+					}
+				}
+				
+
+				const moveStorage = (state, from, to) => {
+					let item = state.storage[from];
+					state.storage[to] = item;
+					item.moved = true;
+					state.storage[from] = null;
+				}
+
+				const getSnake = (state, from) => {
+					if (state.storage[from] === null) {
+						return [{id:from, path: 'success'}]
+					}
+
+					if (state.index[from].type === 'transporter') {
+						const item = state.index[from];
+						const direction = item.direction;
+						let nextKey = undefined;
+						if (direction === 'right') {
+							nextKey = (item.x+1)+'_'+item.y;
+						}
+						else if (direction === 'down') {
+							nextKey = item.x+'_'+(item.y+1);
+						}
+
+						const next = state.map[nextKey];
+
+						let result = [{path: 'blocked'}];
+
+						if (next !== undefined) {
+							result = getSnake(state, next)
+						}
+
+						if (result[result.length-1].path === 'success') {
+							return [{id: from, path: 'success'}].concat(result);
+						}
+					}
+
+					return [{id: from, path: 'blocked'}]
+				}
+
+				const tickCallback = () => {
+					for (let i = 0; i < data.length; i++) {
+						let id = data[i].id;
+						if (state.storage[id] !== null) {
+							state.storage[id].moved = false;
+						}
+					}
+
+					for (let i = 0; i < data.length; i++) {
+						const item = data[i];
+						if (item.type === 'generator') {
+							if (item.requestMaterialType === undefined) {
+								if (state.generatorState[item.id] > 0) {
+									state.generatorState[item.id] = state.generatorState[item.id] - 1;
+								}
+								else {
+									if (state.storage[item.id] === null) {
+										state.storage[item.id] = {materialType: 1, moved: true};
+										state.generatorState[item.id] =item.productionTicks;
+									}
+								}
+							}
+						}
+						else if (item.type === 'consumer') {
+							const currentStorage = state.storage[item.id];
+							if (currentStorage === null || currentStorage.materialType !== item.requestMaterialType) {
+								//do nothing
+							}
+							else if (state.generatorState[item.id] > 0) {
+								state.generatorState[item.id] = state.generatorState[item.id] - 1;
+							}
+							else {
+								state.storage[item.id] = null;
+								state.generatorState[item.id] =item.productionTicks;
+							}
+						}
+					}
+
+					for (let i = 0; i < data.length; i++) {
+						const item = data[i];
+						const possibleStorage = state.storage[item.id];
+
+						if (item.type === 'transporter' 
+							&& possibleStorage !== null 
+							&& possibleStorage.moved === false) {
+
+							let neighborKey = undefined;
+
+							if (item.direction === 'right') {
+								neighborKey = (item.x+1)+'_'+item.y;
+							}
+							else if (item.direction === 'down') {
+								neighborKey = item.x+'_'+(item.y+1);
+							}
+
+							const neighbor = state.map[neighborKey];
+
+							if (neighbor !== undefined) {
+								if (state.storage[neighbor] === null) {
+									moveStorage(state, item.id, neighbor);
+								}
+								else {
+									const snake = getSnake(state, neighbor);
+									const path = snake[snake.length-1].path;
+									if (path === 'blocked') {
+										for (let i = 0; i < snake.length; i++) {
+											state.storage[snake[i].id].moved = 'blocked';
+										}
+									}
+									else {
+										for (let i = snake.length-2; i >= 0; i--) {
+											moveStorage(state, snake[i].id, snake[i+1].id);
+										}
+										moveStorage(state, item.id, neighbor);		
+									}
+								}
+							}
+						}
+					}
+
+					for (let i = 0; i < data.length; i++) {
+						const item = data[i];
+
+						if (item.type === 'transporter') {
+							console.log ('  ++ ' + item.id);
+							let neighborKey = undefined;
+
+							if (item.direction === 'right') {
+								neighborKey = (item.x-1)+'_'+item.y;
+							}
+							else if (item.direction === 'down') {
+								neighborKey = item.x+'_'+(item.y-1);
+							}
+
+							const neighbor = state.map[neighborKey]
+
+							if (neighbor !== undefined && state.index[neighbor].type === 'generator') {
+								const possibleStorage = state.storage[neighbor];
+								if (possibleStorage !== null && possibleStorage.moved === false) {
+									if (state.storage[item.id] === null) {
+										moveStorage(state, neighbor, item.id);
+									}
+									else {
+										// console.log(getSnake(state, item.id));
+									}
+								}
+							}
+						}
+					}
+
+					renderFromScratch(canvas, state);
+
+					setTimeout(tickCallback, 1000);
+				}
+
+				tickCallback();
+			}
+		</script>
+	</head>
+	<body>
+		<div style="display: flex; align-items: stretch; max-height: 451px;">
+			<canvas height="450px" width="1050px" id="canvas" style="border: solid;"></canvas>
+		</div>
+	</body>
+</html>
