@@ -6,7 +6,7 @@ Web page to play around with factorio-inspired logistical systems.
 
 ## Run instructions
 
-Open *index.html* in your browser.
+Open **index.html** in your browser.
 
 ## Development thoughts
 
