@@ -31,6 +31,34 @@
 				ctx.stroke();
 			}
 
+			const renderHex = (ctx, x, y, radius, side, step, fillColor) => {
+				let points = [
+					x+step, y-side/2,
+					x+step, y+side/2,
+					x, y+radius,
+					x-step, y+side/2,
+					x-step, y-side/2,
+					x, y-radius
+				];
+
+				ctx.beginPath();
+				ctx.moveTo(points[10], points[11]);
+				for (let k = 0; k < points.length/2; k++) {
+					let x2 = points[k*2];
+					let y2 = points[k*2+1];
+
+					ctx.lineTo(x2, y2);
+				}
+				ctx.closePath();
+
+				if (fillColor) {
+					ctx.fillStyle = fillColor;
+					ctx.fill();
+				} else {
+					ctx.stroke();
+				}
+			}
+
 			window.onload = () => {
 				const canvas = document.querySelector('#canvas');
 				const ctx = canvas.getContext('2d');
@@ -42,33 +70,11 @@
 					ctx.strokeStyle = gridColor;
 					
 					for (let i = 0; i <= WIDTH/STEP/2; i++) {
-						
-
 						for (let j = 0; j <= HEIGHT/STEP/2; j++) {
-							let x = i * 2 * step + (j % 2)*step;
-							let y = j * (radius+side/2);
+							let x = i * 2 * step + (j % 2)*step + step;
+							let y = j * (radius+side/2) + radius;
 
-							let points = [
-								x+step, y-side/2,
-								x+step, y+side/2,
-								x, y+radius,
-								x-step, y+side/2,
-								x-step, y-side/2,
-								x, y-radius
-							];
-							
-							for (let k = 0; k < points.length/2; k++) {
-								let x1 = points[k*2];
-								let y1 = points[k*2+1];
-								let x2 = points[k*2+2];
-								let y2 = points[k*2+3];
-								if (k === (points.length/2-1)) {
-									x2 = points[0];
-									y2 = points[1];
-								}
-
-								renderLine(ctx, x1, y1, x2, y2);
-							}
+							renderHex(ctx, x, y, radius, side, step);
 						}
 					}
 				}
@@ -87,6 +93,100 @@
 
 
 				setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor);
+
+				//this madness is all about getting closest hex centers
+				//inputs are in weird column rows that is more like X,Y
+				const getThreeCenters = (column, row, side, radius, step) => {
+					let isColumnOdd = (column % 2) === 1;
+					let isRowOdd = (row % 2) === 1;
+
+					let result = [];
+
+					if (isColumnOdd && isRowOdd) {
+						result[0] = (column-1)*step;
+						result[2] = column*step;
+						result[4] = (column+1)*step;
+
+						result[1] = radius + row*(side/2+radius);
+						result[5] = result[1];
+						result[3] = radius + (row-1)*(side/2+radius);
+					} else if (!isColumnOdd && isRowOdd) {
+						result[0] = (column-1)*step;
+						result[2] = (column+0)*step;
+						result[4] = (column+1)*step;
+
+						result[1] = radius + (row-1)*(side/2+radius);
+						result[5] = result[1];
+						result[3] = radius + (row+0)*(side/2+radius);
+					} else if (isColumnOdd && !isRowOdd) {
+						result[0] = (column-1)*step;
+						result[2] = (column+0)*step;
+						result[4] = (column+1)*step;
+
+						result[1] = radius + (row-1)*(side/2+radius);
+						result[5] = result[1];
+						result[3] = radius + (row+0)*(side/2+radius);
+					} else {
+						result[0] = (column-1)*step;
+						result[2] = (column+0)*step;
+						result[4] = (column+1)*step;
+
+						result[1] = radius + row*(side/2+radius);
+						result[5] = result[1];
+						result[3] = radius + (row-1)*(side/2+radius);
+					}
+
+					return result;
+
+				}
+
+				const project = (mouseX, mouseY, side, radius, step) => {
+					let column = mouseX / step;
+					let row = mouseY / (side/2+radius);
+
+					column = column < 0 ? 0 : Math.floor(column);
+					row = row < 0 ? 0 : Math.floor(row);
+
+					let coords = getThreeCenters(column, row, side, radius, step);
+
+					result = {x: 0, y: 0};
+					let distance = radius*2;
+					for (let i = 0; i < 3; i++) {
+						let centerX = coords[i*2];
+						let centerY = coords[i*2+1];
+
+						// renderHex(ctx, centerX, centerY, state.side, state.radius, state.step, "#800");
+						let newDistance = Math.sqrt(Math.pow(centerX-mouseX, 2) + Math.pow(centerY-mouseY,2));
+
+						if (newDistance < distance) {
+							distance = newDistance;
+							result.x = centerX;
+							result.y = centerY;
+						}
+					}
+					return result;
+				}
+
+				
+				let lastTime = Date.now();
+				canvas.addEventListener(
+					"mousemove",
+					(e) => {
+						let delta = Date.now() - lastTime;
+						//there is no need to check too often, we have 60hz screens most of the time
+						if (delta > 13) {
+							setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor);
+							let x = e.clientX - canvas.offsetLeft-5;
+							let y = e.clientY - canvas.offsetTop-5;
+							let chosenCenter = project(x, y, state.side, state.radius, state.step);
+
+							
+							renderHex(ctx, chosenCenter.x, chosenCenter.y, state.side, state.radius, state.step, "#800");
+						}
+
+						lastTime = Date.now();
+					}
+				);
 			}
 		</script>
 	</head>
