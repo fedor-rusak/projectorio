@@ -62,19 +62,37 @@
 			window.onload = () => {
 				const canvas = document.querySelector('#canvas');
 				const ctx = canvas.getContext('2d');
-				const setBackground = (step, side, radius, backgroundColor, gridColor) => {
+				const setBackground = (step, side, radius, backgroundColor, gridColor, textWidth) => {
 					const WIDTH = canvas.width;
 					const HEIGHT = canvas.height;
 					ctx.fillStyle = backgroundColor;
 					ctx.fillRect(0, 0, WIDTH, HEIGHT);
 					ctx.strokeStyle = gridColor;
 					
+					
+
 					for (let i = 0; i <= WIDTH/STEP/2; i++) {
+						let q = i,
+							s = -i,
+							r = 0;
 						for (let j = 0; j <= HEIGHT/STEP/2; j++) {
+							r = j;
+							if (j === 0) {
+								//nothing
+							}
+							else if (j % 2 === 0) {
+								q-=1;
+							}
+							else {
+								s-=1;
+							}
 							let x = i * 2 * step + (j % 2)*step + step;
 							let y = j * (radius+side/2) + radius;
 
 							renderHex(ctx, x, y, radius, side, step);
+							ctx.font = "20px serif";
+							ctx.fillStyle = "#000000";
+							ctx.fillText(q+", "+s+", "+r, x-textWidth/2, y+7, textWidth);
 						}
 					}
 				}
@@ -86,13 +104,14 @@
 				const state = {
 					step: STEP,
 					side: SIDE,
+					textWidth: 40,
 					radius: RADIUS,
 					backgroundColor: 'lightgrey',
 					gridColor: 'rgba(100,0,0,0.25)'
 				};
 
 
-				setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor);
+				setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor, state.textWidth);
 
 				//this madness is all about getting closest hex centers
 				//inputs are in weird column rows that is more like X,Y
@@ -175,7 +194,7 @@
 						let delta = Date.now() - lastTime;
 						//there is no need to check too often, we have 60hz screens most of the time
 						if (delta > 13) {
-							setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor);
+							setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor, state.textWidth);
 							let x = e.clientX - canvas.offsetLeft-5;
 							let y = e.clientY - canvas.offsetTop-5;
 							let chosenCenter = project(x, y, state.side, state.radius, state.step);
