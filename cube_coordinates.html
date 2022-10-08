@@ -171,10 +171,25 @@
 							result.y = centerY;
 						}
 					}
-					return result;
+
+					
+					let r = (result.y-radius)/(side/2+radius);
+					r = r < 0 ? 0 : Math.floor(r);
+					let q = Math.floor((result.x-r*step)/(step*2));
+					return {
+						q,
+						s:-q-r,
+						r
+					};
 				}
 
-				
+				const project = (q, s, r, side, radius, step) => {
+					let y = radius + r*(radius + side/2);
+					let x = step + r*step + q*step*2;
+
+					return {x, y};
+				}
+
 				let lastTime = Date.now();
 				canvas.addEventListener(
 					"mousemove",
@@ -186,10 +201,14 @@
 							let x = e.pageX - canvas.offsetLeft-5;
 							let y = e.pageY - canvas.offsetTop;
 
-							let chosenCenter = unproject(x, y, state.side, state.radius, state.step);
-
-							
+							let {q, s, r} = unproject(x, y, state.side, state.radius, state.step);
+							console.log(`${q} ${s} ${r}`)
+							let chosenCenter = project(q, s, r, state.side, state.radius, state.step)
+							console.log(`${chosenCenter.x} ${chosenCenter.y}`)
 							renderHex(ctx, chosenCenter.x, chosenCenter.y, state.radius, state.side, state.step, "#800");
+							ctx.font = "20px serif";
+							ctx.fillStyle = "#BBBBBB";
+							ctx.fillText(q+", "+s+", "+r, chosenCenter.x-state.textWidth/2, chosenCenter.y+7, state.textWidth);
 						}
 
 						lastTime = Date.now();
