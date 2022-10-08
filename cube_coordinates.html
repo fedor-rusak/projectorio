@@ -202,9 +202,9 @@
 							let y = e.pageY - canvas.offsetTop;
 
 							let {q, s, r} = unproject(x, y, state.side, state.radius, state.step);
-							console.log(`${q} ${s} ${r}`)
+
 							let chosenCenter = project(q, s, r, state.side, state.radius, state.step)
-							console.log(`${chosenCenter.x} ${chosenCenter.y}`)
+
 							renderHex(ctx, chosenCenter.x, chosenCenter.y, state.radius, state.side, state.step, "#800");
 							ctx.font = "20px serif";
 							ctx.fillStyle = "#BBBBBB";
