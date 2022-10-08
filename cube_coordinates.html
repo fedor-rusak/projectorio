@@ -61,6 +61,7 @@
 
 			window.onload = () => {
 				const canvas = document.querySelector('#canvas');
+				const canvasRect = canvas.getBoundingClientRect();
 				const ctx = canvas.getContext('2d');
 				const setBackground = (step, side, radius, backgroundColor, gridColor, textWidth) => {
 					const WIDTH = canvas.width;
@@ -115,58 +116,45 @@
 
 				//this madness is all about getting closest hex centers
 				//inputs are in weird column rows that is more like X,Y
-				const getThreeCenters = (column, row, side, radius, step) => {
-					let isColumnOdd = (column % 2) === 1;
+				const getThreeCenters = (halfColumn, row, side, radius, step) => {
+					let isHalfColumnOdd = (halfColumn % 2) === 1;
 					let isRowOdd = (row % 2) === 1;
 
 					let result = [];
+					result[0] = (halfColumn-1)*step;
+					result[2] = halfColumn*step;
+					result[4] = (halfColumn+1)*step;
 
-					if (isColumnOdd && isRowOdd) {
-						result[0] = (column-1)*step;
-						result[2] = column*step;
-						result[4] = (column+1)*step;
-
+					if (isHalfColumnOdd && isRowOdd) {
 						result[1] = radius + row*(side/2+radius);
 						result[5] = result[1];
-						result[3] = radius + (row-1)*(side/2+radius);
-					} else if (!isColumnOdd && isRowOdd) {
-						result[0] = (column-1)*step;
-						result[2] = (column+0)*step;
-						result[4] = (column+1)*step;
-
-						result[1] = radius + (row-1)*(side/2+radius);
+						result[3] = radius + (row+1)*(side/2+radius);
+					} else if (!isHalfColumnOdd && isRowOdd) {
+						result[1] = radius + (row+1)*(side/2+radius);
 						result[5] = result[1];
 						result[3] = radius + (row+0)*(side/2+radius);
-					} else if (isColumnOdd && !isRowOdd) {
-						result[0] = (column-1)*step;
-						result[2] = (column+0)*step;
-						result[4] = (column+1)*step;
-
-						result[1] = radius + (row-1)*(side/2+radius);
+					} else if (isHalfColumnOdd && !isRowOdd) {
+						result[1] = radius + (row+1)*(side/2+radius);
 						result[5] = result[1];
 						result[3] = radius + (row+0)*(side/2+radius);
 					} else {
-						result[0] = (column-1)*step;
-						result[2] = (column+0)*step;
-						result[4] = (column+1)*step;
-
 						result[1] = radius + row*(side/2+radius);
 						result[5] = result[1];
-						result[3] = radius + (row-1)*(side/2+radius);
+						result[3] = radius + (row+1)*(side/2+radius);
 					}
 
 					return result;
 
 				}
 
-				const project = (mouseX, mouseY, side, radius, step) => {
-					let column = mouseX / step;
-					let row = mouseY / (side/2+radius);
+				const unproject = (mouseX, mouseY, side, radius, step) => {
+					let halfColumn = mouseX / step;
+					let row = (mouseY-radius) / (side/2+radius);
 
-					column = column < 0 ? 0 : Math.floor(column);
+					halfColumn = halfColumn < 0 ? 0 : Math.floor(halfColumn);
 					row = row < 0 ? 0 : Math.floor(row);
 
-					let coords = getThreeCenters(column, row, side, radius, step);
+					let coords = getThreeCenters(halfColumn, row, side, radius, step);
 
 					result = {x: 0, y: 0};
 					let distance = radius*2;
@@ -174,7 +162,7 @@
 						let centerX = coords[i*2];
 						let centerY = coords[i*2+1];
 
-						// renderHex(ctx, centerX, centerY, state.side, state.radius, state.step, "#800");
+						// renderHex(ctx, centerX, centerY, state.radius, state.side, state.step, "#800");
 						let newDistance = Math.sqrt(Math.pow(centerX-mouseX, 2) + Math.pow(centerY-mouseY,2));
 
 						if (newDistance < distance) {
@@ -195,12 +183,13 @@
 						//there is no need to check too often, we have 60hz screens most of the time
 						if (delta > 13) {
 							setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor, state.textWidth);
-							let x = e.clientX - canvas.offsetLeft-5;
-							let y = e.clientY - canvas.offsetTop-5;
-							let chosenCenter = project(x, y, state.side, state.radius, state.step);
+							let x = e.pageX - canvas.offsetLeft-5;
+							let y = e.pageY - canvas.offsetTop;
+
+							let chosenCenter = unproject(x, y, state.side, state.radius, state.step);
 
 							
-							renderHex(ctx, chosenCenter.x, chosenCenter.y, state.side, state.radius, state.step, "#800");
+							renderHex(ctx, chosenCenter.x, chosenCenter.y, state.radius, state.side, state.step, "#800");
 						}
 
 						lastTime = Date.now();
