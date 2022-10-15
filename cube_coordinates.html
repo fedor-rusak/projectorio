@@ -14,31 +14,17 @@
 			 *  Here I play with hex grid approach.
 			 */
 			const data = [
-				{id: 1, type: 'generator', width: 3, height: 3, productionTicks: 0, x: 3, y: 3},
-				{id: 2, type: 'consumer', width: 3, height: 3, productionTicks: 3, requestMaterialType: 1, x: 9, y: 3},
-				{id: 3, type: 'transporter', direction: 'right', x: 6, y: 3},
-				{id: 4, type: 'transporter', direction: 'down', x: 7, y: 3},
-				{id: 5, type: 'transporter', direction: 'down', x: 7, y: 4},
-				{id: 6, type: 'transporter', direction: 'right', x: 7, y: 5},
-				{id: 7, type: 'transporter', direction: 'right', x: 8, y: 5},
-				{id: 8, type: 'multiswitch', combines: true, direction: 'right', inputTypes: [1,2,3], connector: {x: 1, y: 1}, x: 14, y: 4}
+				{id: 1, type: 'generator', q: 3, r: 3}
 			];
-
-			const renderLine = (ctx, x1,y1, x2, y2) => {
-				ctx.beginPath();
-				ctx.moveTo(x1, y1);
-				ctx.lineTo(x2, y2);
-				ctx.stroke();
-			}
 
 			const renderHex = (ctx, x, y, radius, side, step, fillColor) => {
 				let points = [
 					x+step, y-side/2,
 					x+step, y+side/2,
-					x, y+radius,
+					x, 		y+radius,
 					x-step, y+side/2,
 					x-step, y-side/2,
-					x, y-radius
+					x, 		y-radius
 				];
 
 				ctx.beginPath();
@@ -59,10 +45,100 @@
 				}
 			}
 
+			const renderHexWithText = (ctx, x, y, radius, side, step, fillColor, textWidth, textColor, text) => {
+				renderHex(ctx, x, y, radius, side, step, fillColor);
+				ctx.fillStyle = textColor;
+				ctx.fillText(text, x-textWidth/2, y+7, textWidth);
+			}
+
+			//this madness is all about getting closest hex centers
+			//inputs are in weird column rows that is more like X,Y
+			const getThreeCenters = (halfColumn, row, side, radius, step) => {
+				let isHalfColumnOdd = (halfColumn % 2) === 1;
+				let isRowOdd = (row % 2) === 1;
+
+				let result = [];
+				result[0] = (halfColumn-1)*step;
+				result[2] = halfColumn*step;
+				result[4] = (halfColumn+1)*step;
+
+				if (isHalfColumnOdd && isRowOdd) {
+					result[1] = radius + row*(side/2+radius);
+					result[5] = result[1];
+					result[3] = radius + (row+1)*(side/2+radius);
+				} else if (!isHalfColumnOdd && isRowOdd) {
+					result[1] = radius + (row+1)*(side/2+radius);
+					result[5] = result[1];
+					result[3] = radius + (row+0)*(side/2+radius);
+				} else if (isHalfColumnOdd && !isRowOdd) {
+					result[1] = radius + (row+1)*(side/2+radius);
+					result[5] = result[1];
+					result[3] = radius + (row+0)*(side/2+radius);
+				} else {
+					result[1] = radius + row*(side/2+radius);
+					result[5] = result[1];
+					result[3] = radius + (row+1)*(side/2+radius);
+				}
+
+				return result;
+
+			}
+
+			const unproject = (mouseX, mouseY, side, radius, step) => {
+				let halfColumn = mouseX / step;
+				let row = (mouseY-radius) / (side/2+radius);
+
+				halfColumn = halfColumn < 0 ? 0 : Math.floor(halfColumn);
+				row = row < 0 ? 0 : Math.floor(row);
+
+				let coords = getThreeCenters(halfColumn, row, side, radius, step);
+
+				result = {x: 0, y: 0};
+				let distance = radius*2;
+				for (let i = 0; i < 3; i++) {
+					let centerX = coords[i*2];
+					let centerY = coords[i*2+1];
+
+					// renderHex(ctx, centerX, centerY, state.radius, state.side, state.step, "#800");
+					let newDistance = Math.sqrt(Math.pow(centerX-mouseX, 2) + Math.pow(centerY-mouseY,2));
+
+					if (newDistance < distance) {
+						distance = newDistance;
+						result.x = centerX;
+						result.y = centerY;
+					}
+				}
+
+				
+				let r = (result.y-radius)/(side/2+radius);
+				r = r < 0 ? 0 : Math.floor(r);
+				let q = Math.floor((result.x-r*step)/(step*2));
+				return {
+					q,
+					s:-q-r,
+					r
+				};
+			}
+
+			const project = (q, s, r, side, radius, step) => {
+				if (q === undefined) {
+					q = -s-r;
+				}
+				else if (r === undefined) {
+					r = -q-s;
+				}
+
+				let y = radius + r*(radius + side/2);
+				let x = step + r*step + q*step*2;
+
+				return {x, y};
+			}
+
 			window.onload = () => {
 				const canvas = document.querySelector('#canvas');
-				const canvasRect = canvas.getBoundingClientRect();
 				const ctx = canvas.getContext('2d');
+				ctx.font = "20px serif";
+
 				const setBackground = (step, side, radius, backgroundColor, gridColor, textWidth) => {
 					const WIDTH = canvas.width;
 					const HEIGHT = canvas.height;
@@ -70,8 +146,6 @@
 					ctx.fillRect(0, 0, WIDTH, HEIGHT);
 					ctx.strokeStyle = gridColor;
 					
-					
-
 					for (let i = 0; i <= WIDTH/STEP/2; i++) {
 						let q = i,
 							s = -i,
@@ -90,12 +164,29 @@
 							let x = i * 2 * step + (j % 2)*step + step;
 							let y = j * (radius+side/2) + radius;
 
-							renderHex(ctx, x, y, radius, side, step);
-							ctx.font = "20px serif";
-							ctx.fillStyle = "#000000";
-							ctx.fillText(q+", "+s+", "+r, x-textWidth/2, y+7, textWidth);
+							renderHexWithText(ctx, x, y, radius, side, step, false,textWidth, "#000000", q+", "+s+", "+r);
 						}
 					}
+				}
+
+				const renderData = (data, step, side, radius, backgroundColor, gridColor, textWidth) => {
+					for (let i = 0; i < data.length; i++) {
+						let dataElement = data[i];
+
+						let {q,s,r} = dataElement;
+						if (s === undefined) {
+							s = -q-r;
+						}
+
+						let hexCenter = project(q, s, r, side, radius, step)
+
+						renderHexWithText(ctx, hexCenter.x, hexCenter.y, radius, side, step, "#080",textWidth, "#000000", q+", "+s+", "+r);
+					}
+				}
+
+				const renderFromScratch = (data, state) => {
+					setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor, state.textWidth);
+					renderData(data, state.step, state.side, state.radius, state.backgroundColor, state.gridColor, state.textWidth)
 				}
 
 				const RADIUS = 50;
@@ -111,84 +202,7 @@
 					gridColor: 'rgba(100,0,0,0.25)'
 				};
 
-
-				setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor, state.textWidth);
-
-				//this madness is all about getting closest hex centers
-				//inputs are in weird column rows that is more like X,Y
-				const getThreeCenters = (halfColumn, row, side, radius, step) => {
-					let isHalfColumnOdd = (halfColumn % 2) === 1;
-					let isRowOdd = (row % 2) === 1;
-
-					let result = [];
-					result[0] = (halfColumn-1)*step;
-					result[2] = halfColumn*step;
-					result[4] = (halfColumn+1)*step;
-
-					if (isHalfColumnOdd && isRowOdd) {
-						result[1] = radius + row*(side/2+radius);
-						result[5] = result[1];
-						result[3] = radius + (row+1)*(side/2+radius);
-					} else if (!isHalfColumnOdd && isRowOdd) {
-						result[1] = radius + (row+1)*(side/2+radius);
-						result[5] = result[1];
-						result[3] = radius + (row+0)*(side/2+radius);
-					} else if (isHalfColumnOdd && !isRowOdd) {
-						result[1] = radius + (row+1)*(side/2+radius);
-						result[5] = result[1];
-						result[3] = radius + (row+0)*(side/2+radius);
-					} else {
-						result[1] = radius + row*(side/2+radius);
-						result[5] = result[1];
-						result[3] = radius + (row+1)*(side/2+radius);
-					}
-
-					return result;
-
-				}
-
-				const unproject = (mouseX, mouseY, side, radius, step) => {
-					let halfColumn = mouseX / step;
-					let row = (mouseY-radius) / (side/2+radius);
-
-					halfColumn = halfColumn < 0 ? 0 : Math.floor(halfColumn);
-					row = row < 0 ? 0 : Math.floor(row);
-
-					let coords = getThreeCenters(halfColumn, row, side, radius, step);
-
-					result = {x: 0, y: 0};
-					let distance = radius*2;
-					for (let i = 0; i < 3; i++) {
-						let centerX = coords[i*2];
-						let centerY = coords[i*2+1];
-
-						// renderHex(ctx, centerX, centerY, state.radius, state.side, state.step, "#800");
-						let newDistance = Math.sqrt(Math.pow(centerX-mouseX, 2) + Math.pow(centerY-mouseY,2));
-
-						if (newDistance < distance) {
-							distance = newDistance;
-							result.x = centerX;
-							result.y = centerY;
-						}
-					}
-
-					
-					let r = (result.y-radius)/(side/2+radius);
-					r = r < 0 ? 0 : Math.floor(r);
-					let q = Math.floor((result.x-r*step)/(step*2));
-					return {
-						q,
-						s:-q-r,
-						r
-					};
-				}
-
-				const project = (q, s, r, side, radius, step) => {
-					let y = radius + r*(radius + side/2);
-					let x = step + r*step + q*step*2;
-
-					return {x, y};
-				}
+				renderFromScratch(data, state);
 
 				let lastTime = Date.now();
 				canvas.addEventListener(
@@ -197,18 +211,16 @@
 						let delta = Date.now() - lastTime;
 						//there is no need to check too often, we have 60hz screens most of the time
 						if (delta > 13) {
-							setBackground(state.step, state.side, state.radius, state.backgroundColor, state.gridColor, state.textWidth);
+							renderFromScratch(data, state);
+
 							let x = e.pageX - canvas.offsetLeft-5;
 							let y = e.pageY - canvas.offsetTop;
 
 							let {q, s, r} = unproject(x, y, state.side, state.radius, state.step);
 
-							let chosenCenter = project(q, s, r, state.side, state.radius, state.step)
+							let hexCenter = project(q, s, r, state.side, state.radius, state.step)
 
-							renderHex(ctx, chosenCenter.x, chosenCenter.y, state.radius, state.side, state.step, "#800");
-							ctx.font = "20px serif";
-							ctx.fillStyle = "#BBBBBB";
-							ctx.fillText(q+", "+s+", "+r, chosenCenter.x-state.textWidth/2, chosenCenter.y+7, state.textWidth);
+							renderHexWithText(ctx, hexCenter.x, hexCenter.y, state.radius, state.side, state.step, "#800", state.textWidth, "#BBBBBB", q+", "+s+", "+r);
 						}
 
 						lastTime = Date.now();
